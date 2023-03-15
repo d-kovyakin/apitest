@@ -13,7 +13,6 @@ use App\Models\Products;
 use Illuminate\Http\Request;
 
 
-
 class OrderController extends Controller {
 
     /**
@@ -40,11 +39,12 @@ class OrderController extends Controller {
      *     )
      */
     public function index(Request $request) {
-        if($request->status == null)
+        if ($request->status == null) {
             $request->status = 'all';
+        }
 
         if ($request->status != 'all') {
-            return OrderResource::collection(Orders::where('status', '=', $request->status)->get()) ;
+            return OrderResource::collection(Orders::where('status', '=', $request->status)->get());
 
         } else {
             return OrderResource::collection(Orders::all());
@@ -56,7 +56,7 @@ class OrderController extends Controller {
      *      path="/order/create?data={data}",
      *      operationId="createOrders",
      *      tags={"Orders"},
-     *      summary="Создание, получение списка заказов и их редактирование.",
+     *      summary="Создание,заказов.",
      *      description="data = [{''id'':2,''count'':1},{''id'':2,''count'':1}] и так далее, где id = id
      * товара, count =  количество товара. Data отсюда не копировать!",
      *     @OA\Parameter(
@@ -154,13 +154,11 @@ class OrderController extends Controller {
 
     /**
      * @OA\Get(
-     *      path="/order/{order}/edit?product_id={id}&count={count}&{delete}=true&add={add}",
+     *      path="/order/{order}/edit?product_id={id}&count={count}",
      *      operationId="editOrdersProducts",
      *      tags={"Orders"},
      *      summary="Редактирование списка продуктов в заказе. ",
-     *      description="Метод возвращает результат. Приоритет операции отдается delete!!! В документации указаны методы, использовать
-     * отдельно , например /order/{order}/edit?product_id={id}&count={count} или /order/{order}/edit?product_id={id}&{delete}=true  или
-     *     /order/{order}/edit?add={add} ",
+     *      description="Метод возвращает результат.",
      *     @OA\Parameter(
      *          name="order",
      *          description="id заказа",
@@ -173,7 +171,7 @@ class OrderController extends Controller {
      *      @OA\Parameter(
      *          name="id",
      *          description="id product",
-     *          required=false,
+     *          required=true,
      *          in="path",
      *          @OA\Schema(
      *              type="integer"
@@ -182,31 +180,13 @@ class OrderController extends Controller {
      *      @OA\Parameter(
      *          name="count",
      *          description="change count product",
-     *          required=false,
+     *          required=true,
      *          in="path",
      *          @OA\Schema(
      *              type="integer"
      *          ),
      *      ),
-     *           @OA\Parameter(
-     *          name="delete",
-     *          description="delete product - input delete",
-     *          required=false,
-     *          in="path",
-     *          @OA\Schema(
-     *              type="string"
-     *          ),
-     *      ),
-     *           @OA\Parameter(
-     *          name="add",
-     *          description="add product - [{''id'':2,''count'':1},{''id'':2,''count'':1}] и так далее, где id = id
-     * товара, count =  количество товара. Data отсюда не копировать!",
-     *          required=false,
-     *          in="path",
-     *          @OA\Schema(
-     *              type="string"
-     *          ),
-     *      ),
+     *
      *     @OA\Response(
      *          response=200,
      *          description="Successful operation",
@@ -217,68 +197,28 @@ class OrderController extends Controller {
     public function edit(OrderRequest $request, string $id) {
         $product_id = (int)$request->product_id;
         $count = (int)$request->count;
-        $delete = (bool)$request->delete;
 
-        $add = $request->add;
+        $product = Order_product::where('product_id', '=', $product_id)->where('orders_id', '=', $id)->first();
+        if ($product_id && $product_id != null && is_int($product_id)
+            && isset($id) && $product != null) {
 
-        if ($request->add && $request->add != null) {
-            $add = json_decode($add);
-        }
 
-        if ($request->add != null) {
-            if ($add != null && count($add) > 0) {
-                foreach ($add as $el) {
-                    if (isset($el->id) && isset($el->count) && is_int($el->id) && is_int($el->count)) {
-                        if (isset(Products::find($el->id)->id)) {
-                            Order_product::create(
-                                [
-                                    'orders_id' => Orders::find($id)->id,
-                                    'product_id' => Products::find($el->id)->id,
-                                    'count' => $el->count,
-                                ]
-                            );
-                        }
-                    }
-                }
-                if ($delete != true) {
-                    return ['success' => 'products was added'];
-                }
+            if ($count && is_int($count)) {
+                $product->update(
+                    [
+                        'count' => $count,
+                    ]
+                );
+                    return ['success' => 'product from orders was changed'];
+
             } else {
-                return ['error' => 'json is not verify'];
+                return ['error' => 'count is not corrected'];
             }
         } else {
-            $product = Order_product::where('product_id','=',$product_id)->where('orders_id', '=', $id)->first();
-            if ($product_id && $product_id != null && is_int($product_id)
-                && isset($id) && $product != null) {
-
-
-                if ($count && is_int($count)) {
-                    $product->update(
-                        [
-                            'count' => $count,
-                        ]
-                    );
-
-                    if (!isset($request->add) && $request->add == '' && $delete != true) {
-                        return ['success' => 'product from orders was changed'];
-                    }
-                } else {
-                    return ['error' => 'count is not corrected'];
-                }
-            } else {
-                return ['error' => 'product_id is not corrected'];
-            }
-
+            return ['error' => 'order_id or product_id is not corrected'];
         }
 
-        if ($delete && $delete == 'true' && Order_product::find($product_id)) {
-            $product->delete();
-            return ['success' => 'product was deleted'];
-        } else {
-            return ['error' => 'product was not finded'];
-        }
     }
-
     /**
      * @OA\Put(
      *      path="/order/{order}?status={status}",
@@ -321,7 +261,7 @@ class OrderController extends Controller {
             );
             return ['success' => 'Status was changed'];
         } else {
-            return ['error' => 'Status was NOT changed!'];
+            return ['error' => 'Order was finded!'];
         }
     }
 
