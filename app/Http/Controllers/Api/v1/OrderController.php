@@ -11,7 +11,7 @@ use App\Models\Order_product;
 use App\Models\Orders;
 use App\Models\Products;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+
 
 
 class OrderController extends Controller {
@@ -40,10 +40,12 @@ class OrderController extends Controller {
      *     )
      */
     public function index(Request $request) {
-        if (($request->status != 'all')) {
-//            return OrderResource::collection(Orders::where('status', '=', $request->status)->get()) ;
+        if($request->status == null)
+            $request->status = 'all';
 
-            return new OrderCollection(Orders::find(4)->products);
+        if ($request->status != 'all') {
+            return OrderResource::collection(Orders::where('status', '=', $request->status)->get()) ;
+
         } else {
             return OrderResource::collection(Orders::all());
         }
