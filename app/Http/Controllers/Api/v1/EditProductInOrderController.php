@@ -108,15 +108,17 @@ class EditProductInOrderController extends Controller {
                                     'count' => $el->count,
                                 ]
                             );
-                            return ['success' => 'product added to order'];
+                            $message= ['success' => 'product added to order'];
                         }
                     } else {
                         return ['error' => 'this product was not finded in db'];
                     }
+
                 } else {
                     return ['error' => 'json is not corrected!'];
                 }
             }
+            return $message;
         } else {
             return ['error' => 'json is not corrected'];
         }
